@@ -16,9 +16,7 @@ def split_interview(appointments_dict: Dict, n_per_shift: List):
         if not target:
             schedule[n_shifts].append(id_appointment)
         else:
-            min_shift_members = {}
-            for j in target:
-                min_shift_members[j] = len(schedule[j])
+            min_shift_members = {j: len(schedule[j]) for j in target}
             schedule[min(min_shift_members, key=min_shift_members.get)].append(id_appointment)
     return schedule
 
