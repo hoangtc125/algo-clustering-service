@@ -9,8 +9,7 @@ from transformers import (
     T5ForConditionalGeneration,
     T5Tokenizer,
 )
-from sklearn.preprocessing import OneHotEncoder
-from pandas.core.frame import DataFrame
+from sklearn.preprocessing import MultiLabelBinarizer
 
 from app.core.config import project_config
 
@@ -38,7 +37,7 @@ class Loader:
         self.__stop_word_data = np.genfromtxt(
             project_config.STOPWORD_PATH, dtype="str", delimiter="\n", encoding="utf8"
         ).tolist()
-        self.__one_hot_encoder = OneHotEncoder()
+        self.__multilabel_binarizer = MultiLabelBinarizer(sparse_output=True)
 
     def feature_engineering(self, data: List):
         features_set = []
@@ -69,8 +68,8 @@ class Loader:
             features_set.append(v_features[0])
         features_set = np.array(features_set)
         return features_set
-    
-    def one_hot_encoding(self, data: DataFrame):
-        return self.__one_hot_encoder.fit_transform(data).toarray()
+        
+    def multilabel_binarizing(self, data):
+        return self.__multilabel_binarizer.fit_transform(data).toarray()
 
 loader = Loader()
