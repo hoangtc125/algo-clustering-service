@@ -13,6 +13,7 @@ class SSMC_FCM:
         dataset: List,
         fields_len: List,
         fields_weight: Optional[List] = [],
+        identity: Optional[List] = [],
         supervised_set: Optional[List] = [],
         n_clusters: Optional[int] = 3,
         fuzzi_M: Optional[int] = 2,
@@ -25,6 +26,7 @@ class SSMC_FCM:
         self.fields_len = fields_len
         self.fields_weight = fields_weight if fields_weight else [1] * len(fields_len)
         self.n_clusters = max([n_clusters, len(supervised_set)])
+        self.identity = identity if identity else [i for i in range(len(dataset))]
         self.supervised_set = supervised_set
         self.fuzzi_M = fuzzi_M
         self.alpha = alpha
@@ -49,7 +51,7 @@ class SSMC_FCM:
             th_loop += 1
         for idx, membership in enumerate(self.membership):
             id_cluster = np.argmax(membership)
-            self.pred_labels[id_cluster].append(idx)
+            self.pred_labels[id_cluster].append(self.identity[idx])
         self.pred_labels = np.array(self.pred_labels, dtype=object)
         # for idx, member in enumerate(self.membership):
         #   print(idx, member, np.argmax(member))

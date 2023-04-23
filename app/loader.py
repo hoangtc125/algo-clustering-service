@@ -69,7 +69,8 @@ class Loader:
         features_set = np.array(features_set)
         return features_set
         
-    def multilabel_binarizing(self, data):
+    def multilabel_binarizing(self, raw_data):
+        data = [[i] for i in raw_data]
         return self.__multilabel_binarizer.fit_transform(data).toarray()
 
 loader = Loader()
