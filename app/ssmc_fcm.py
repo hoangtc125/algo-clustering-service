@@ -27,7 +27,7 @@ class SSMC_FCM:
         self.fields_weight = fields_weight if fields_weight else [1] * len(fields_len)
         self.n_clusters = max([n_clusters, len(supervised_set)])
         self.identity = identity if identity else [i for i in range(len(dataset))]
-        self.supervised_set = supervised_set
+        self.supervised_set = [[self.identity.index(j) for j in i] for i in supervised_set]
         self.fuzzi_M = fuzzi_M
         self.alpha = alpha
         self.epsilon = epsilon
@@ -253,6 +253,9 @@ class SSMC_FCM:
             )
             __iter += field_len
         return distance if distance else self.epsilon
+    
+    def __calculate_cosin_distance(self, p1, p2):
+        return np.dot(p1, p2)/(np.linalg.norm(p1)*np.linalg.norm(p2))
 
     def __calculate_euclid_distance(self, p1, p2):
         return np.linalg.norm(p1 - p2)

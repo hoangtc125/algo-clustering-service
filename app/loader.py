@@ -42,7 +42,7 @@ class Loader:
     def feature_engineering(self, data: List):
         features_set = []
         for line in data:
-            line = gensim.utils.simple_preprocess(line)  # Tiền xử lý dữ liệu
+            line = gensim.utils.simple_preprocess(str(line))  # Tiền xử lý dữ liệu
             line = " ".join(line)
             line = underthesea.word_tokenize(line, format="text")  # Segment word
             line = " ".join(
@@ -70,7 +70,7 @@ class Loader:
         return features_set
         
     def multilabel_binarizing(self, raw_data):
-        data = [[i] for i in raw_data]
+        data = [i if isinstance(i, list) else [i] for i in raw_data]
         return self.__multilabel_binarizer.fit_transform(data).toarray()
 
 loader = Loader()
