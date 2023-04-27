@@ -39,6 +39,16 @@ class SSMC_FCM:
         self.pred_labels = [[] for _ in range(self.n_clusters)]
         self.is_plot = is_plot
         self.loss_values = []
+        self.__calculate_mean_distance()
+
+    def __calculate_mean_distance(self):
+        __iter = 0
+        self.mean_distance = []
+        mean_dataset = np.mean(self.dataset, axis=0)
+        for field_len in self.fields_len:
+            mean_point = mean_dataset[__iter : __iter + field_len]
+            self.mean_distance.append(np.linalg.norm(mean_point))
+            __iter += field_len
 
     def clustering(self):
         self.__generate_centroid()
@@ -246,11 +256,11 @@ class SSMC_FCM:
     def __calculate_point_distance(self, p1, p2):
         __iter = 0
         distance = 0
-        for field_len, field_weight in zip(self.fields_len, self.fields_weight):
-            distance += self.__calculate_euclid_distance(
-                np.array(p1[__iter : __iter + field_len]) * field_weight,
-                np.array(p2[__iter : __iter + field_len]) * field_weight,
-            )
+        for field_len, field_weight, mean_distance in zip(self.fields_len, self.fields_weight, self.mean_distance):
+            distance += field_weight * self.__calculate_euclid_distance(
+                            np.array(p1[__iter : __iter + field_len]),
+                            np.array(p2[__iter : __iter + field_len]),
+                        ) / mean_distance
             __iter += field_len
         return distance if distance else self.epsilon
     
@@ -278,6 +288,8 @@ class SSMC_FCM:
                 ]
             )
         )
+        # if len(self.loss_values) >= 2 and self.loss_values[-1] > self.loss_values[-2]:
+        #     self.is_stop = True
 
     def show_cluster_members(self):
         len_supervised = sum(
