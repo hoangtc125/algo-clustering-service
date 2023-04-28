@@ -16,7 +16,7 @@ class SSMC_FCM:
         fields_weight: Optional[List] = [],
         identity: Optional[List] = [],
         supervised_set: Optional[List] = [],
-        n_clusters: Optional[int] = 3,
+        n_clusters: Optional[int] = 5,
         fuzzi_M: Optional[int] = 2,
         alpha: Optional[float] = 0.6,
         epsilon: Optional[float] = 0.001,
@@ -28,7 +28,9 @@ class SSMC_FCM:
         self.fields_weight = fields_weight if fields_weight else [1] * len(fields_len)
         self.n_clusters = max([n_clusters, len(supervised_set)])
         self.identity = identity if identity else [i for i in range(len(dataset))]
-        self.supervised_set = [[self.identity.index(j) for j in i] for i in supervised_set]
+        self.supervised_set = [
+            [self.identity.index(j) for j in i] for i in supervised_set
+        ]
         self.fuzzi_M = fuzzi_M
         self.alpha = alpha
         self.epsilon = epsilon
@@ -44,12 +46,13 @@ class SSMC_FCM:
     def clustering(self):
         self.__calculate_mean_distance()
         self.__generate_centroid()
+        self.__calculate_mean_distance()
         th_loop = 1
         while th_loop <= self.n_loop and not self.is_stop:
             self.is_stop = True
-            self.__calculate_mean_distance()
             self.__update_membership(th_loop)
             self.__update_centroid(th_loop)
+            self.__calculate_mean_distance()
             self.__calculate_loss_function()
             th_loop += 1
         for idx, membership in enumerate(self.membership):
@@ -181,8 +184,16 @@ class SSMC_FCM:
                 [uik * point for uik, point in zip(uik_pow, self.dataset)], axis=0
             ) / sum(uik_pow)
             th_centroid.append(new_centroid)
-            if self.__calculate_point_distance(centroid, new_centroid) > self.epsilon:
-                self.is_stop = False
+        if (
+            sum(
+                [
+                    self.__calculate_euclid_distance(old_centroid, new_centroid)
+                    for old_centroid, new_centroid in zip(self.centroid, th_centroid)
+                ]
+            )
+            > self.epsilon
+        ):
+            self.is_stop = False
         self.centroid = np.array(th_centroid)
         self.plot(f"{th_loop}-th loop")
 
@@ -194,7 +205,9 @@ class SSMC_FCM:
             if not cluster:
                 continue
             c = next(color)
-            supervised_points = np.array([self.dataset[self.identity.index(id)].tolist() for id in cluster])
+            supervised_points = np.array(
+                [self.dataset[self.identity.index(id)].tolist() for id in cluster]
+            )
             plt.scatter(
                 supervised_points[:, 0],
                 supervised_points[:, 1],
@@ -266,18 +279,22 @@ class SSMC_FCM:
         __iter = 0
         distance = 0
         for field_len, field_weight, mean_distance, min_distance, max_distance in zip(
-            self.fields_len, self.fields_weight, self.mean_distance, self.min_distance, self.max_distance
+            self.fields_len,
+            self.fields_weight,
+            self.mean_distance,
+            self.min_distance,
+            self.max_distance,
         ):
             __distance = self.__calculate_euclid_distance(
-                            np.array(p1[__iter : __iter + field_len]),
-                            np.array(p2[__iter : __iter + field_len]),
-                        )
-            distance += field_weight * __distance - min_distance / max_distance
+                np.array(p1[__iter : __iter + field_len]),
+                np.array(p2[__iter : __iter + field_len]),
+            )
+            distance += field_weight * (__distance - min_distance) / max_distance
             __iter += field_len
         return distance if distance else self.epsilon
-    
+
     def __calculate_cosin_distance(self, p1, p2):
-        return np.dot(p1, p2)/(np.linalg.norm(p1)*np.linalg.norm(p2))
+        return np.dot(p1, p2) / (np.linalg.norm(p1) * np.linalg.norm(p2))
 
     def __calculate_euclid_distance(self, p1, p2):
         return np.linalg.norm(p1 - p2)
