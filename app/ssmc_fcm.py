@@ -4,6 +4,7 @@ import traceback
 import scipy.optimize
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.spatial.distance import pdist
 from typing import Optional, List
 
 
@@ -39,22 +40,14 @@ class SSMC_FCM:
         self.pred_labels = [[] for _ in range(self.n_clusters)]
         self.is_plot = is_plot
         self.loss_values = []
-        self.__calculate_mean_distance()
-
-    def __calculate_mean_distance(self):
-        __iter = 0
-        self.mean_distance = []
-        mean_dataset = np.mean(self.dataset, axis=0)
-        for field_len in self.fields_len:
-            mean_point = mean_dataset[__iter : __iter + field_len]
-            self.mean_distance.append(np.linalg.norm(mean_point))
-            __iter += field_len
 
     def clustering(self):
+        self.__calculate_mean_distance()
         self.__generate_centroid()
         th_loop = 1
         while th_loop <= self.n_loop and not self.is_stop:
             self.is_stop = True
+            self.__calculate_mean_distance()
             self.__update_membership(th_loop)
             self.__update_centroid(th_loop)
             self.__calculate_loss_function()
@@ -65,6 +58,20 @@ class SSMC_FCM:
         self.pred_labels = np.array(self.pred_labels, dtype=object)
         # for idx, member in enumerate(self.membership):
         #   print(idx, member, np.argmax(member))
+
+    def __calculate_mean_distance(self):
+        data = np.array([*self.dataset, *self.centroid])
+        __iter = 0
+        self.mean_distance = []
+        self.min_distance = []
+        self.max_distance = []
+        for field_len in self.fields_len:
+            distance_matrix = pdist(data[:, __iter : __iter + field_len])
+            distance_matrix = distance_matrix[distance_matrix != 0]
+            self.mean_distance.append(np.mean(distance_matrix))
+            self.min_distance.append(min(distance_matrix))
+            self.max_distance.append(max(distance_matrix))
+            __iter += field_len
 
     def __generate_centroid(self):
         # computing centroid for supervised clusters
@@ -184,8 +191,10 @@ class SSMC_FCM:
             return
         color = iter(plt.cm.rainbow(np.linspace(0, 1, self.n_clusters)))
         for idx, cluster in enumerate(self.supervised_set):
+            if not cluster:
+                continue
             c = next(color)
-            supervised_points = np.array([self.dataset[id].tolist() for id in cluster])
+            supervised_points = np.array([self.dataset[self.identity.index(id)].tolist() for id in cluster])
             plt.scatter(
                 supervised_points[:, 0],
                 supervised_points[:, 1],
@@ -256,11 +265,14 @@ class SSMC_FCM:
     def __calculate_point_distance(self, p1, p2):
         __iter = 0
         distance = 0
-        for field_len, field_weight, mean_distance in zip(self.fields_len, self.fields_weight, self.mean_distance):
-            distance += field_weight * self.__calculate_euclid_distance(
+        for field_len, field_weight, mean_distance, min_distance, max_distance in zip(
+            self.fields_len, self.fields_weight, self.mean_distance, self.min_distance, self.max_distance
+        ):
+            __distance = self.__calculate_euclid_distance(
                             np.array(p1[__iter : __iter + field_len]),
                             np.array(p2[__iter : __iter + field_len]),
-                        ) / mean_distance
+                        )
+            distance += field_weight * __distance - min_distance / max_distance
             __iter += field_len
         return distance if distance else self.epsilon
     
