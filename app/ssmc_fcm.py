@@ -45,7 +45,6 @@ class SSMC_FCM:
 
     def clustering(self):
         self.__generate_centroid()
-        self.__calculate_mean_distance()
         th_loop = 1
         while th_loop <= self.n_loop and not self.is_stop:
             self.is_stop = True
@@ -69,7 +68,7 @@ class SSMC_FCM:
         self.max_distance = []
         for field_len in self.fields_len:
             distance_matrix = pdist(data[:, __iter : __iter + field_len])
-            distance_matrix = distance_matrix[distance_matrix != 0]
+            # distance_matrix = distance_matrix[distance_matrix != 0]
             self.mean_distance.append(np.mean(distance_matrix))
             self.min_distance.append(min(distance_matrix))
             self.max_distance.append(max(distance_matrix))
@@ -84,6 +83,7 @@ class SSMC_FCM:
             supervised_data = [self.dataset[i] for i in supervised_in_cluster]
             __centroid = np.sum(supervised_data, axis=0) / len(supervised_in_cluster)
             self.centroid.append(__centroid)
+        self.__calculate_mean_distance()
 
         # computing random centroid for unsupervised clusters (apply kmean++)
         for k in range(self.n_clusters - len(self.centroid)):
@@ -97,7 +97,7 @@ class SSMC_FCM:
                 ## compute distance of 'point' from each of the previously
                 ## selected centroid and store the minimum distance
                 for j in range(len(self.centroid)):
-                    temp_dist = self.__calculate_euclid_distance(point, self.centroid[j])
+                    temp_dist = self.__calculate_point_distance(point, self.centroid[j])
                     d = min(d, temp_dist)
                 dist.append(d)
 
@@ -105,6 +105,7 @@ class SSMC_FCM:
             dist = np.array(dist)
             next_centroid = self.dataset[np.argmax(dist), :]
             self.centroid.append(next_centroid)
+            self.__calculate_mean_distance()
 
         self.centroid = np.array(self.centroid)
         self.plot("Initial Centroids")
@@ -171,7 +172,7 @@ class SSMC_FCM:
 
     def __update_centroid(self, th_loop):
         th_centroid = []
-        for id_centroid, centroid in enumerate(self.centroid):
+        for id_centroid in range(len(self.centroid)):
             uik_pow = [
                 math.pow(
                     self.membership[id_point][id_centroid],
@@ -290,7 +291,12 @@ class SSMC_FCM:
             )
             distance += field_weight * (__distance - min_distance) / max_distance
             __iter += field_len
-        return distance if distance > 0 else self.epsilon
+        try:
+            if distance < 0:
+                raise Exception("Distance negative!!!")
+        except:
+            traceback.print_exc()
+        return distance if distance else self.epsilon
 
     def __calculate_cosin_distance(self, p1, p2):
         return np.dot(p1, p2) / (np.linalg.norm(p1) * np.linalg.norm(p2))
