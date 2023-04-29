@@ -44,7 +44,6 @@ class SSMC_FCM:
         self.loss_values = []
 
     def clustering(self):
-        self.__calculate_mean_distance()
         self.__generate_centroid()
         self.__calculate_mean_distance()
         th_loop = 1
@@ -98,7 +97,7 @@ class SSMC_FCM:
                 ## compute distance of 'point' from each of the previously
                 ## selected centroid and store the minimum distance
                 for j in range(len(self.centroid)):
-                    temp_dist = self.__calculate_point_distance(point, self.centroid[j])
+                    temp_dist = self.__calculate_euclid_distance(point, self.centroid[j])
                     d = min(d, temp_dist)
                 dist.append(d)
 
@@ -124,10 +123,10 @@ class SSMC_FCM:
         ]
 
         # without supervision
-        for id_point, point in enumerate(self.dataset):
+        for id_point in range(len(self.dataset)):
             Dij_pow = []
             sum_Dij_pow = 0
-            for id_centroid, centroid in enumerate(self.centroid):
+            for id_centroid in range(len(self.centroid)):
                 Dik_pow = math.pow(Dij[id_point][id_centroid], fuzzi_M_pow)
                 Dij_pow.append(Dik_pow)
                 sum_Dij_pow += 1 / Dik_pow
@@ -291,7 +290,7 @@ class SSMC_FCM:
             )
             distance += field_weight * (__distance - min_distance) / max_distance
             __iter += field_len
-        return distance if distance else self.epsilon
+        return distance if distance > 0 else self.epsilon
 
     def __calculate_cosin_distance(self, p1, p2):
         return np.dot(p1, p2) / (np.linalg.norm(p1) * np.linalg.norm(p2))
