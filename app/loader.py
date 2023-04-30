@@ -27,7 +27,9 @@ class Loader:
             self.__device = torch.device("cpu")
 
         # Load model vector hóa
-        self.__phobert = AutoModel.from_pretrained("vinai/phobert-base").to(self.__device)
+        self.__phobert = AutoModel.from_pretrained("vinai/phobert-base").to(
+            self.__device
+        )
         self.__tokenizer = AutoTokenizer.from_pretrained("vinai/phobert-base")
 
         # # Load model summarization
@@ -68,9 +70,10 @@ class Loader:
             features_set.append(v_features[0])
         features_set = np.array(features_set)
         return features_set
-        
+
     def multilabel_binarizing(self, raw_data):
         data = [i if isinstance(i, list) else [i] for i in raw_data]
         return self.__multilabel_binarizer.fit_transform(data).toarray()
+
 
 loader = Loader()
