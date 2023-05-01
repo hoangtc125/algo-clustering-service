@@ -74,6 +74,3 @@ class Loader:
     def multilabel_binarizing(self, raw_data):
         data = [i if isinstance(i, list) else [i] for i in raw_data]
         return self.__multilabel_binarizer.fit_transform(data).toarray()
-
-
-loader = Loader()

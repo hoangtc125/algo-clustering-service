@@ -23,7 +23,7 @@ class SSMC_FCM:
         n_loop: Optional[int] = 50,
         is_plot: Optional[bool] = False,
     ) -> None:
-        self.dataset = dataset
+        self.dataset = np.array(dataset)
         self.fields_len = fields_len
         self.fields_weight = fields_weight if fields_weight else [1] * len(fields_len)
         self.n_clusters = max([n_clusters, len(supervised_set)])
@@ -42,6 +42,8 @@ class SSMC_FCM:
         self.pred_labels = [[] for _ in range(self.n_clusters)]
         self.is_plot = is_plot
         self.loss_values = []
+        self.Dij = None
+        self.distance_matrix = [[]] * len(fields_len)
 
     def clustering(self):
         self.__generate_centroid()
@@ -61,12 +63,13 @@ class SSMC_FCM:
     def __calculate_l2_distance(self):
         __iter = 0
         self.l2_distance = []
-        for field_len in self.fields_len:
+        for id_field, field_len in enumerate(self.fields_len):
             distance_matrix = cdist(
                 self.dataset[:, __iter : __iter + field_len],
                 np.array(self.centroid)[:, __iter : __iter + field_len],
             )
             self.l2_distance.append(np.linalg.norm(distance_matrix, axis=None))
+            self.distance_matrix[id_field] = distance_matrix
             __iter += field_len
 
     def __generate_centroid(self):
@@ -86,14 +89,13 @@ class SSMC_FCM:
             ## initialize a list to store distances of data
             ## points from nearest centroid
             dist = []
-            for i in range(self.dataset.shape[0]):
-                point = self.dataset[i, :]
+            for id_point in range(self.dataset.shape[0]):
                 d = sys.maxsize
 
                 ## compute distance of 'point' from each of the previously
                 ## selected centroid and store the minimum distance
-                for j in range(len(self.centroid)):
-                    temp_dist = self.__calculate_point_distance(point, self.centroid[j])
+                for id_centroid in range(len(self.centroid)):
+                    temp_dist = self.__calculate_point_distance(id_point, id_centroid)
                     d = min(d, temp_dist)
                 dist.append(d)
 
@@ -108,20 +110,21 @@ class SSMC_FCM:
 
     def __update_membership(self, th_loop):
         fuzzi_M_pow = 1 / (self.fuzzi_M - 1)
-        Dij = [
-            [
-                self.__calculate_point_distance(point, centroid)
-                for centroid in self.centroid
+        if self.Dij is None:
+            self.Dij = [
+                [
+                    self.__calculate_point_distance(id_point, id_centroid)
+                    for id_centroid in range(len(self.centroid))
+                ]
+                for id_point in range(len(self.dataset))
             ]
-            for point in self.dataset
-        ]
 
         # without supervision
         for id_point in range(len(self.dataset)):
             Dij_pow = []
             sum_Dij_pow = 0
             for id_centroid in range(len(self.centroid)):
-                Dik_pow = math.pow(Dij[id_point][id_centroid], fuzzi_M_pow)
+                Dik_pow = math.pow(self.Dij[id_point][id_centroid], fuzzi_M_pow)
                 Dij_pow.append(Dik_pow)
                 sum_Dij_pow += 1 / Dik_pow
 
@@ -134,8 +137,8 @@ class SSMC_FCM:
         for id_cluster, supervised_cluster in enumerate(self.supervised_set):
             for id_point in supervised_cluster:
                 fuzzi_M2 = self.fuzzi_set[id_point][id_cluster]
-                dmin = min(Dij[id_point])
-                dij = [distance_ij / dmin for distance_ij in Dij[id_point]]
+                dmin = min(self.Dij[id_point])
+                dij = [distance_ij / dmin for distance_ij in self.Dij[id_point]]
                 uij = [
                     math.pow(1 / (self.fuzzi_M * pow(dij[k], 2)), fuzzi_M_pow)
                     if k != id_cluster
@@ -174,7 +177,7 @@ class SSMC_FCM:
                 for id_point in range(len(self.dataset))
             ]
             new_centroid = np.sum(
-                [uik * point for uik, point in zip(uik_pow, self.dataset)], axis=0
+                [uik * np.array(point) for uik, point in zip(uik_pow, self.dataset)], axis=0
             ) / sum(uik_pow)
             th_centroid.append(new_centroid)
         if (
@@ -264,34 +267,33 @@ class SSMC_FCM:
                         raise Exception("fuzzi_M2 is complex")
                     fuzzi_M2 = fuzzi_M2 if fuzzi_M2 > self.fuzzi_M else self.fuzzi_M
                     self.fuzzi_set[id_point] = [fuzzi_M2] * self.n_clusters
-                    # print(id_point, self.fuzzi_set[id_point][id_cluster])
                 except:
                     traceback.print_exc()
 
-    def __calculate_point_distance(self, p1, p2):
+    def __calculate_point_distance(self, id_point, id_centroid):
         __iter = 0
         distance = 0
-        for (
-            field_len,
-            field_weight,
-            l2_distance,
-        ) in zip(
+        for (id_field, (field_len, field_weight, l2_distance,)) in enumerate(zip(
             self.fields_len,
             self.fields_weight,
             self.l2_distance,
-        ):
-            __distance = self.__calculate_euclid_distance(
-                np.array(p1)[__iter : __iter + field_len],
-                np.array(p2)[__iter : __iter + field_len],
-            )
+        )):
+            __distance = self.distance_matrix[id_field][id_point][id_centroid]
             distance += field_weight * __distance / l2_distance
             __iter += field_len
         return distance if distance else self.epsilon**2
 
     def __calculate_euclid_distance(self, p1, p2):
-        return math.sqrt(sum((p1 - p2) ** 2))
+        return np.linalg.norm(np.array(p1) - np.array(p2))
 
     def __calculate_loss_function(self):
+        self.Dij = [
+            [
+                self.__calculate_point_distance(id_point, id_centroid)
+                for id_centroid in range(len(self.centroid))
+            ]
+            for id_point in range(len(self.dataset))
+        ]
         self.loss_values.append(
             sum(
                 [
@@ -301,16 +303,14 @@ class SSMC_FCM:
                                 self.membership[id_point][id_centroid],
                                 self.fuzzi_set[id_point][id_centroid],
                             )
-                            * self.__calculate_point_distance(point, centroid)
-                            for id_centroid, centroid in enumerate(self.centroid)
+                            * self.Dij[id_point][id_centroid]
+                            for id_centroid in range(len(self.centroid))
                         ]
                     )
-                    for id_point, point in enumerate(self.dataset)
+                    for id_point in range(len(self.dataset))
                 ]
             )
         )
-        # if len(self.loss_values) >= 2 and self.loss_values[-1] > self.loss_values[-2]:
-        #     self.is_stop = True
 
     def show_cluster_members(self):
         len_supervised = sum(
