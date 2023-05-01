@@ -4,7 +4,7 @@ import traceback
 import scipy.optimize
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.spatial.distance import pdist
+from scipy.spatial.distance import cdist
 from typing import Optional, List
 
 
@@ -50,28 +50,23 @@ class SSMC_FCM:
             self.is_stop = True
             self.__update_membership(th_loop)
             self.__update_centroid(th_loop)
-            self.__calculate_mean_distance()
+            self.__calculate_l2_distance()
             self.__calculate_loss_function()
             th_loop += 1
         for idx, membership in enumerate(self.membership):
             id_cluster = np.argmax(membership)
             self.pred_labels[id_cluster].append(self.identity[idx])
         self.pred_labels = np.array(self.pred_labels, dtype=object)
-        # for idx, member in enumerate(self.membership):
-        #   print(idx, member, np.argmax(member))
 
-    def __calculate_mean_distance(self):
-        data = np.array([*self.dataset, *self.centroid])
+    def __calculate_l2_distance(self):
         __iter = 0
-        self.mean_distance = []
-        self.min_distance = []
-        self.max_distance = []
+        self.l2_distance = []
         for field_len in self.fields_len:
-            distance_matrix = pdist(data[:, __iter : __iter + field_len])
-            # distance_matrix = distance_matrix[distance_matrix != 0]
-            self.mean_distance.append(np.mean(distance_matrix))
-            self.min_distance.append(min(distance_matrix))
-            self.max_distance.append(max(distance_matrix))
+            distance_matrix = cdist(
+                self.dataset[:, __iter : __iter + field_len],
+                np.array(self.centroid)[:, __iter : __iter + field_len],
+            )
+            self.l2_distance.append(np.linalg.norm(distance_matrix, axis=None))
             __iter += field_len
 
     def __generate_centroid(self):
@@ -83,7 +78,8 @@ class SSMC_FCM:
             supervised_data = [self.dataset[i] for i in supervised_in_cluster]
             __centroid = np.sum(supervised_data, axis=0) / len(supervised_in_cluster)
             self.centroid.append(__centroid)
-        self.__calculate_mean_distance()
+        if self.centroid:
+            self.__calculate_l2_distance()
 
         # computing random centroid for unsupervised clusters (apply kmean++)
         for k in range(self.n_clusters - len(self.centroid)):
@@ -105,15 +101,12 @@ class SSMC_FCM:
             dist = np.array(dist)
             next_centroid = self.dataset[np.argmax(dist), :]
             self.centroid.append(next_centroid)
-            self.__calculate_mean_distance()
+            self.__calculate_l2_distance()
 
         self.centroid = np.array(self.centroid)
         self.plot("Initial Centroids")
 
     def __update_membership(self, th_loop):
-        # for idx, member in enumerate(self.membership):
-        #   print(idx, member, np.argmax(member))
-
         fuzzi_M_pow = 1 / (self.fuzzi_M - 1)
         Dij = [
             [
@@ -278,31 +271,25 @@ class SSMC_FCM:
     def __calculate_point_distance(self, p1, p2):
         __iter = 0
         distance = 0
-        for field_len, field_weight, mean_distance, min_distance, max_distance in zip(
+        for (
+            field_len,
+            field_weight,
+            l2_distance,
+        ) in zip(
             self.fields_len,
             self.fields_weight,
-            self.mean_distance,
-            self.min_distance,
-            self.max_distance,
+            self.l2_distance,
         ):
             __distance = self.__calculate_euclid_distance(
-                np.array(p1[__iter : __iter + field_len]),
-                np.array(p2[__iter : __iter + field_len]),
+                np.array(p1)[__iter : __iter + field_len],
+                np.array(p2)[__iter : __iter + field_len],
             )
-            distance += field_weight * (__distance - min_distance) / max_distance
+            distance += field_weight * __distance / l2_distance
             __iter += field_len
-        try:
-            if distance < 0:
-                raise Exception("Distance negative!!!")
-        except:
-            traceback.print_exc()
-        return distance if distance else self.epsilon
-
-    def __calculate_cosin_distance(self, p1, p2):
-        return np.dot(p1, p2) / (np.linalg.norm(p1) * np.linalg.norm(p2))
+        return distance if distance else self.epsilon**2
 
     def __calculate_euclid_distance(self, p1, p2):
-        return np.linalg.norm(p1 - p2)
+        return math.sqrt(sum((p1 - p2) ** 2))
 
     def __calculate_loss_function(self):
         self.loss_values.append(
