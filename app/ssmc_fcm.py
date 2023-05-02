@@ -4,8 +4,14 @@ import traceback
 import scipy.optimize
 import numpy as np
 import matplotlib.pyplot as plt
+from enum import Enum
 from scipy.spatial.distance import cdist
-from typing import Optional, List
+from typing import Optional, List, Union
+
+
+class NormMode(Enum):
+    L2 = "l2_normalization"
+    MINMAX = "min_max_scaling"
 
 
 class SSMC_FCM:
@@ -22,6 +28,7 @@ class SSMC_FCM:
         epsilon: Optional[float] = 0.001,
         n_loop: Optional[int] = 50,
         is_plot: Optional[bool] = False,
+        norm_mode: Optional[Union[NormMode, str]] = NormMode.MINMAX,
     ) -> None:
         self.dataset = np.array(dataset)
         self.fields_len = fields_len
@@ -39,6 +46,7 @@ class SSMC_FCM:
         self.centroid = []
         self.n_loop = n_loop
         self.is_stop = False
+        self.norm_mode = norm_mode
         self.pred_labels = [[] for _ in range(self.n_clusters)]
         self.is_plot = is_plot
         self.loss_values = []
@@ -52,7 +60,7 @@ class SSMC_FCM:
             self.is_stop = True
             self.__update_membership(th_loop)
             self.__update_centroid(th_loop)
-            self.__calculate_l2_distance()
+            self.__calculate_norm_distance()
             self.__calculate_loss_function()
             th_loop += 1
         for idx, membership in enumerate(self.membership):
@@ -60,15 +68,19 @@ class SSMC_FCM:
             self.pred_labels[id_cluster].append(self.identity[idx])
         self.pred_labels = np.array(self.pred_labels, dtype=object)
 
-    def __calculate_l2_distance(self):
+    def __calculate_norm_distance(self):
         __iter = 0
         self.l2_distance = []
+        self.minmax_distance = []
         for id_field, field_len in enumerate(self.fields_len):
             distance_matrix = cdist(
                 self.dataset[:, __iter : __iter + field_len],
                 np.array(self.centroid)[:, __iter : __iter + field_len],
             )
             self.l2_distance.append(np.linalg.norm(distance_matrix, axis=None))
+            self.minmax_distance.append(
+                (np.min(distance_matrix), np.max(distance_matrix))
+            )
             self.distance_matrix[id_field] = distance_matrix
             __iter += field_len
 
@@ -82,7 +94,7 @@ class SSMC_FCM:
             __centroid = np.sum(supervised_data, axis=0) / len(supervised_in_cluster)
             self.centroid.append(__centroid)
         if self.centroid:
-            self.__calculate_l2_distance()
+            self.__calculate_norm_distance()
 
         # computing random centroid for unsupervised clusters (apply kmean++)
         for k in range(self.n_clusters - len(self.centroid)):
@@ -103,7 +115,7 @@ class SSMC_FCM:
             dist = np.array(dist)
             next_centroid = self.dataset[np.argmax(dist), :]
             self.centroid.append(next_centroid)
-            self.__calculate_l2_distance()
+            self.__calculate_norm_distance()
 
         self.centroid = np.array(self.centroid)
         self.plot("Initial Centroids")
@@ -177,7 +189,8 @@ class SSMC_FCM:
                 for id_point in range(len(self.dataset))
             ]
             new_centroid = np.sum(
-                [uik * np.array(point) for uik, point in zip(uik_pow, self.dataset)], axis=0
+                [uik * np.array(point) for uik, point in zip(uik_pow, self.dataset)],
+                axis=0,
             ) / sum(uik_pow)
             th_centroid.append(new_centroid)
         if (
@@ -273,13 +286,33 @@ class SSMC_FCM:
     def __calculate_point_distance(self, id_point, id_centroid):
         __iter = 0
         distance = 0
-        for (id_field, (field_len, field_weight, l2_distance,)) in enumerate(zip(
-            self.fields_len,
-            self.fields_weight,
-            self.l2_distance,
-        )):
+        for id_field, (
+            field_len,
+            field_weight,
+            l2_distance,
+            minmax_distance,
+        ) in enumerate(
+            zip(
+                self.fields_len,
+                self.fields_weight,
+                self.l2_distance,
+                self.minmax_distance,
+            )
+        ):
             __distance = self.distance_matrix[id_field][id_point][id_centroid]
-            distance += field_weight * __distance / l2_distance
+            if self.norm_mode == NormMode.L2:
+                field_distance = field_weight * __distance / l2_distance
+            elif self.norm_mode == NormMode.MINMAX:
+                min_distance, max_distance = minmax_distance
+                field_distance = (
+                    field_weight * (__distance - min_distance) / max_distance
+                )
+                try:
+                    if field_distance < 0:
+                        raise Exception("Distance negative!!!")
+                except:
+                    traceback.print_exc()
+            distance += field_distance
             __iter += field_len
         return distance if distance else self.epsilon**2
 
@@ -328,5 +361,3 @@ class SSMC_FCM:
         plt.plot(self.loss_values)
         plt.title("Loss function")
         plt.show()
-        print("loss functions: ")
-        print(self.loss_values)
