@@ -15,5 +15,6 @@ class ProjectConfig(BaseSettings):
     ALGO_PORT = int(getenv("ALGO_PORT", 8002))
     RESPONSE_CODE_DIR = BASE_DIR + r"/resources/response_code.json"
 
+
 project_config = ProjectConfig()
 print("--- Algo Clustering Config:\n", json.dumps(project_config.dict(), indent=4))

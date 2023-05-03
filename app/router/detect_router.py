@@ -18,9 +18,13 @@ async def test_file():
 @router.get("/detect/test-cam", response_model=HttpResponse)
 async def test_cam():
     url = "http://192.168.1.13:8080/photo.jpg"
-    response = requests.get(url, timeout=2)
+    try:
+        response = requests.get(url, timeout=2)
+    except:
+        raise CustomHTTPException(error_type="cam_timeout")
     img_data = response.content
-    card = detect_text_from_base64(
+    info_list = detect_text_from_base64(
         byte_to_base64(img_data)
     )
+    card = make_card_hust(info_list)
     return success_response(data=card)

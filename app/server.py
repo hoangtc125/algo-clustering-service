@@ -19,6 +19,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.middleware("http")
 async def add_request_middleware(request: Request, call_next):
     start_time = time.time()
@@ -27,15 +28,14 @@ async def add_request_middleware(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
+
 @app.exception_handler(CustomHTTPException)
 async def uvicorn_exception_handler(request: Request, exc: CustomHTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={
-            "status_code": exc.error_code,
-            "msg": exc.error_message
-        }
+        content={"status_code": exc.error_code, "msg": exc.error_message},
     )
+
 
 app.include_router(detect_router)
 
