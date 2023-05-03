@@ -28,7 +28,7 @@ class SSMC_FCM:
         epsilon: Optional[float] = 0.001,
         n_loop: Optional[int] = 50,
         is_plot: Optional[bool] = False,
-        norm_mode: Optional[Union[NormMode, str]] = NormMode.MINMAX,
+        norm_mode: Optional[str] = NormMode.MINMAX.value,
     ) -> None:
         self.dataset = np.array(dataset)
         self.fields_len = fields_len
@@ -300,9 +300,9 @@ class SSMC_FCM:
             )
         ):
             __distance = self.distance_matrix[id_field][id_point][id_centroid]
-            if self.norm_mode == NormMode.L2:
+            if self.norm_mode == NormMode.L2.value:
                 field_distance = field_weight * __distance / l2_distance
-            elif self.norm_mode == NormMode.MINMAX:
+            elif self.norm_mode == NormMode.MINMAX.value:
                 min_distance, max_distance = minmax_distance
                 field_distance = (
                     field_weight * (__distance - min_distance) / max_distance

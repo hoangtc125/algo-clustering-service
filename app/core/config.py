@@ -12,7 +12,8 @@ class ProjectConfig(BaseSettings):
     STOPWORD_PATH = BASE_DIR + r"/resources/vn_stopword.txt"
     FEATURES_PATH = BASE_DIR + r"/resources/features.txt"
     VISION_CONFIG_PATH = BASE_DIR + r"/resources/cclub-cloud-vision-api.json"
-
+    ALGO_PORT = int(getenv("ALGO_PORT", 8002))
+    RESPONSE_CODE_DIR = BASE_DIR + r"/resources/response_code.json"
 
 project_config = ProjectConfig()
 print("--- Algo Clustering Config:\n", json.dumps(project_config.dict(), indent=4))

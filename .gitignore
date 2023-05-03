@@ -160,4 +160,4 @@ cython_debug/
 #.idea/
 
 .venv
-resources
+resources/cclub-cloud-vision-api.json
