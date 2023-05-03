@@ -1,13 +1,8 @@
-from enum import Enum
 from pydantic import BaseModel, root_validator
 from unidecode import unidecode
 from datetime import datetime
 
 from app.core.exception import CustomHTTPException
-
-
-class School(Enum):
-    HUST = "HANOI UNIVERSITY OF SCIENCE AND TECHNOLOGY"
 
 
 class Card(BaseModel):
@@ -21,16 +16,33 @@ class Card(BaseModel):
 
 class CardHUST(Card):
     @root_validator
-    def create_email(cls, values):
+    def make_card(cls, values):
         print(values)
         if values.get("school", "") != CardHUST.get_detect_guide()["school"]:
             raise CustomHTTPException(error_type="detect_not_support")
+        try:
+            datetime.strptime(values.get("expired_card", ""), "%d/%m/%Y")
+        except ValueError:
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'expired_card:{values.get("expired_card", "")}',
+            )
+        try:
+            datetime.strptime(values.get("birth", ""), "%d/%m/%Y")
+        except ValueError:
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'birth:{values.get("birth", "")}',
+            )
         if datetime.today() > datetime.strptime(
             values.get("expired_card", "1/1/2000"), "%d/%m/%Y"
         ):
             raise CustomHTTPException(error_type="detect_out_of_date")
         if not values.get("number", "").isdigit():
-            raise CustomHTTPException(error_type="detect_id_failure")
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'number:{values.get("number", "")}',
+            )
         # Tạo email dựa trên thông tin trong values
         fullname = values.get("fullname", "")
         number = values.get("number", "")
@@ -53,6 +65,58 @@ class CardHUST(Card):
             "birth": "Ngày sinh / Date of Birth",
             "expired_card": "Giá trị đến / Valid Thru",
             "number": "MSSV / ID No.",
+        }
+
+
+class CardHUCE(Card):
+    email: str
+    major_class: str
+
+    @root_validator
+    def make_card(cls, values):
+        print(values)
+        try:
+            values["major"] = values["major"].split("Faculty.")[-1].strip()
+            values["expired_card"] = (
+                values["expired_card"].split("Course:")[-1].split("-")[1].strip()
+            )
+            values["number"] = values["number"].split("No.")[-1].strip()
+            values["email"] = values["email"].split("Email:")[-1].strip()
+            values["major_class"] = values["major_class"].split("Class:")[-1].strip()
+        except Exception as e:
+            raise CustomHTTPException(error_type="detect_invalid", message=str(e))
+        if values.get("school", "") != CardHUCE.get_detect_guide()["school"]:
+            raise CustomHTTPException(error_type="detect_not_support")
+        try:
+            datetime.strptime(values.get("birth", ""), "%d/%m/%Y")
+        except ValueError:
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'birth:{values.get("birth", "")}',
+            )
+        if not values.get("expired_card", "").isdigit():
+            raise CustomHTTPException(
+                error_type="detect_out_of_date",
+                message=f'expired_card:{values.get("expired_card", "")}',
+            )
+        if datetime.now().year > int(values.get("expired_card")):
+            raise CustomHTTPException(error_type="detect_out_of_date")
+        if not values.get("number", "").isdigit():
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'number:{values.get("number", "")}',
+            )
+        return values
+
+    @classmethod
+    def get_detect_guide(self):
+        return {
+            "school": "NATIONAL UNIVERSITY OF CIVIL ENGINEERING",
+            "major": "Khoa / Faculty.",
+            "expired_card": "Khóa học / Course: 20-20",
+            "number": "MSSV / ID No.",
+            "email": "Email: @nuce.edu.vn",
+            "major_class": "Lớp / Class:",
         }
 
 

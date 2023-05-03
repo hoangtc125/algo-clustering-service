@@ -20,9 +20,9 @@
             "code": 2002,
             "message": "Thẻ đã hết hạn sử dụng"
         },
-        "detect_id_failure": {
+        "detect_info_failure": {
             "code": 2003,
-            "message": "Không nhận diện được mã số sinh viên"
+            "message": "Không nhận diện được"
         },
         "cam_timeout": {
             "code": 3000,

@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from app.core.config import project_config
 from app.core.exception import CustomHTTPException
-from app.model.card import CardHUST
+from app.model.card import CardHUCE, CardHUST
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = project_config.VISION_CONFIG_PATH
 
@@ -29,7 +29,9 @@ def detect_info(detect_guide: Dict, info_list: List):
 def search(info_list: List, value: str):
     match_list = difflib.get_close_matches(value, info_list)
     if not match_list:
-        raise CustomHTTPException(error_type="detect_invalid")
+        raise CustomHTTPException(
+            error_type="detect_invalid", message=f"{value} not found"
+        )
     return info_list.index(match_list[0])
 
 
@@ -52,6 +54,20 @@ def make_card_hust(info_list):
         birth=info_list[ids_detect["birth"] + 1],
         expired_card=info_list[ids_detect["expired_card"] + 1],
         number=info_list[ids_detect["number"] + 1],
+    )
+
+
+def make_card_huce(info_list):
+    ids_detect = detect_info(CardHUCE.get_detect_guide(), info_list)
+    return CardHUCE(
+        school=info_list[ids_detect["school"]],
+        major=info_list[ids_detect["major"]],
+        fullname=info_list[ids_detect["number"] - 2],
+        birth=info_list[ids_detect["number"] - 1],
+        expired_card=info_list[ids_detect["expired_card"]],
+        number=info_list[ids_detect["number"]],
+        email=info_list[ids_detect["email"]],
+        major_class=info_list[ids_detect["major_class"]],
     )
 
 
