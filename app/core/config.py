@@ -11,6 +11,7 @@ class ProjectConfig(BaseSettings):
     SERVICE_NAME = getenv("SERVICE_NAME", "ALGO_CLUSTERING")
     STOPWORD_PATH = BASE_DIR + r"/resources/vn_stopword.txt"
     FEATURES_PATH = BASE_DIR + r"/resources/features.txt"
+    VISION_CONFIG_PATH = BASE_DIR + r"/resources/cclub-cloud-vision-api.json"
 
 
 project_config = ProjectConfig()
