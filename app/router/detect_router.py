@@ -11,6 +11,7 @@ from app.service.text_detection import (
     make_card_huce,
     make_card_hust,
     byte_to_base64,
+    make_card_neu,
 )
 from app.service.mail import make_and_send_mail_card
 
@@ -18,6 +19,7 @@ from app.service.mail import make_and_send_mail_card
 class School(str, Enum):
     HUST = "HUST"
     HUCE = "HUCE"
+    NEU = "NEU"
 
 
 router = APIRouter()
@@ -35,6 +37,10 @@ async def test_file(
         file_path = r"/home/hoangtc125/Downloads/6447cd41859a5ac4038b.jpg"
         info_list = detect_text_from_base64(file_to_base64(file_path))
         card = make_card_huce(info_list)
+    elif school == School.NEU.value:
+        file_path = r"/home/hoangtc125/Downloads/neu.jpg"
+        info_list = detect_text_from_base64(file_to_base64(file_path))
+        card = make_card_neu(info_list)
     if send_mail:
         background_tasks.add_task(make_and_send_mail_card, card.__dict__)
     return success_response(data=card)
@@ -56,6 +62,8 @@ async def test_cam(
         card = make_card_hust(info_list)
     elif school == School.HUCE.value:
         card = make_card_huce(info_list)
+    elif school == School.NEU.value:
+        card = make_card_neu(info_list)
     if send_mail:
         background_tasks.add_task(make_and_send_mail_card, card.__dict__)
     return success_response(data=card)

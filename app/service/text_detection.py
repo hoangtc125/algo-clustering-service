@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from app.core.config import project_config
 from app.core.exception import CustomHTTPException
-from app.model.card import CardHUCE, CardHUST
+from app.model.card import CardHUCE, CardHUST, CardNEU
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = project_config.VISION_CONFIG_PATH
 
@@ -40,9 +40,12 @@ def detect_text_from_base64(image_base64: str):
     image = vision.Image()
     image.content = base64.b64decode(image_base64)
     response = vision_client.text_detection(image=image, timeout=10)
-    info_text = response.text_annotations[0].description
-    info_list = info_text.split("\n")
-    return info_list
+    try:
+        info_text = response.text_annotations[0].description
+        info_list = info_text.split("\n")
+        return info_list
+    except:
+        raise CustomHTTPException(error_type="detect_info_failure")
 
 
 def make_card_hust(info_list):
@@ -68,4 +71,15 @@ def make_card_huce(info_list):
         number=info_list[ids_detect["number"]],
         email=info_list[ids_detect["email"]],
         major_class=info_list[ids_detect["major_class"]],
+    )
+
+def make_card_neu(info_list):
+    ids_detect = detect_info(CardNEU.get_detect_guide(), info_list)
+    return CardNEU(
+        school=info_list[ids_detect["school"]],
+        major=info_list[ids_detect["fullname"] + 3],
+        fullname=info_list[ids_detect["fullname"] + 1],
+        birth=info_list[ids_detect["fullname"] + 2],
+        expired_card=info_list[ids_detect["expired_card"] - 1],
+        number=info_list[ids_detect["school"] - 2],
     )

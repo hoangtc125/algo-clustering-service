@@ -1,3 +1,4 @@
+import re
 from pydantic import BaseModel, root_validator
 from unidecode import unidecode
 from datetime import datetime
@@ -78,10 +79,8 @@ class CardHUCE(Card):
         print(values)
         try:
             values["major"] = values["major"].split("Faculty.")[-1].strip()
-            values["expired_card"] = (
-                values["expired_card"].split("Course:")[-1].split("-")[1].strip()
-            )
-            values["number"] = values["number"].split("No.")[-1].strip()
+            values["expired_card"] = re.findall(r"\d+", values["expired_card"])[-1]
+            values["number"] = re.findall(r"\d+", values["number"])[-1]
             values["email"] = values["email"].split("Email:")[-1].strip()
             values["major_class"] = values["major_class"].split("Class:")[-1].strip()
         except Exception as e:
@@ -120,6 +119,51 @@ class CardHUCE(Card):
             "number": "MSSV / ID No.",
             "email": "Email: @nuce.edu.vn",
             "major_class": "Lớp / Class:",
+        }
+
+
+class CardNEU(Card):
+    @root_validator
+    def make_card(cls, values):
+        print(values)
+        try:
+            values["major"] = values["major"].split(":")[-1].strip()
+            values["fullname"] = values["fullname"].split(":")[-1].strip()
+            values["birth"] = values["birth"].split(":")[-1].strip()
+            values["expired_card"] = re.findall(r"\d+", values["expired_card"])[-1]
+            values["number"] = re.findall(r"\d+", values["number"])[-1]
+            values["email"] = values["number"] + "@st.neu.edu.vn"
+        except Exception as e:
+            raise CustomHTTPException(error_type="detect_invalid", message=str(e))
+        if values.get("school", "") != CardNEU.get_detect_guide()["school"]:
+            raise CustomHTTPException(error_type="detect_not_support")
+        try:
+            datetime.strptime(values.get("birth", ""), "%d/%m/%Y")
+        except ValueError:
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'birth:{values.get("birth", "")}',
+            )
+        if not values.get("expired_card", "").isdigit():
+            raise CustomHTTPException(
+                error_type="detect_out_of_date",
+                message=f'expired_card:{values.get("expired_card", "")}',
+            )
+        if datetime.now().year > int(values.get("expired_card")):
+            raise CustomHTTPException(error_type="detect_out_of_date")
+        if not values.get("number", "").isdigit():
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'number:{values.get("number", "")}',
+            )
+        return values
+
+    @classmethod
+    def get_detect_guide(self):
+        return {
+            "school": "TRƯỜNG ĐẠI HỌC KINH TẾ QUỐC DÂN",
+            "fullname": "THẺ SINH VIÊN",
+            "expired_card": "Hiệu lực từ : / 20",
         }
 
 
