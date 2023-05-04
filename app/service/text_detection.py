@@ -69,9 +69,3 @@ def make_card_huce(info_list):
         email=info_list[ids_detect["email"]],
         major_class=info_list[ids_detect["major_class"]],
     )
-
-
-if __name__ == "__main__":
-    info_list = detect_text_from_base64(
-        file_to_base64(r"C:\Users\ADMIN\Pictures\20194060-Trần Công Hoàng.jpg")
-    )

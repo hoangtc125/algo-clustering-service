@@ -27,6 +27,10 @@
         "cam_timeout": {
             "code": 3000,
             "message": "Camera Timeout"
+        },
+        "mail_invalid": {
+            "code": 4000,
+            "message": "Email không hợp lệ"
         }
     }
 }

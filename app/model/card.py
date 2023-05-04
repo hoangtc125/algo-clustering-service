@@ -3,6 +3,7 @@ from unidecode import unidecode
 from datetime import datetime
 
 from app.core.exception import CustomHTTPException
+from app.util.mail import is_valid_email
 
 
 class Card(BaseModel):
@@ -101,6 +102,8 @@ class CardHUCE(Card):
             )
         if datetime.now().year > int(values.get("expired_card")):
             raise CustomHTTPException(error_type="detect_out_of_date")
+        if not is_valid_email(values.get("email", "")):
+            raise CustomHTTPException(error_type="mail_invalid")
         if not values.get("number", "").isdigit():
             raise CustomHTTPException(
                 error_type="detect_info_failure",
@@ -121,4 +124,15 @@ class CardHUCE(Card):
 
 
 if __name__ == "__main__":
-    print(CardHUST.get_detect_guide())
+    card = CardHUCE(
+        school="NATIONAL UNIVERSITY OF CIVIL ENGINEERING",
+        major="Khoa / Faculty. aaaa",
+        expired_card="Khóa học / Course: 2011-2033",
+        number="MSSV / ID No. 123123",
+        email="Email: fffff@nuce.edu.vn",
+        major_class="Lớp / Class: sdf",
+        fullname="tran cong hoang",
+        birth="1/2/2003",
+    )
+    print()
+    print(card.__dict__)
