@@ -1,8 +1,11 @@
 import os
 import base64
 import difflib
+import cv2
+import numpy as np
 from google.cloud import vision
 from typing import Dict, List
+from pyzbar.pyzbar import decode
 
 from app.core.config import project_config
 from app.core.exception import CustomHTTPException
@@ -48,6 +51,22 @@ def detect_text_from_base64(image_base64: str):
         raise CustomHTTPException(error_type="detect_info_failure")
 
 
+def detect_code_from_base64(image_base64: str):
+    decoded_data = base64.b64decode(image_base64)
+    np_data = np.frombuffer(decoded_data, dtype=np.uint8)
+    img = cv2.imdecode(np_data, cv2.IMREAD_COLOR)
+    img = cv2.GaussianBlur(img, (5, 5), 0)  # Làm mờ ảnh để loại bỏ noise
+    gray_img = cv2.cvtColor(
+        img, cv2.COLOR_BGR2GRAY
+    )  # Chuyển sang ảnh xám để dễ dàng nhận diện
+    alpha = 1.5  # giá trị alpha tăng độ sáng
+    beta = 0  # giá trị beta tăng độ sáng
+    bright_img = cv2.convertScaleAbs(gray_img, alpha=alpha, beta=beta)
+    barcodes = decode(bright_img)  # Nhận diện mã vạch
+    barcode_list = [barcode.data.decode() for barcode in barcodes]
+    return barcode_list
+
+
 def make_card_hust(info_list):
     ids_detect = detect_info(CardHUST.get_detect_guide(), info_list)
     return CardHUST(
@@ -73,6 +92,7 @@ def make_card_huce(info_list):
         major_class=info_list[ids_detect["major_class"]],
     )
 
+
 def make_card_neu(info_list):
     ids_detect = detect_info(CardNEU.get_detect_guide(), info_list)
     return CardNEU(
@@ -83,3 +103,11 @@ def make_card_neu(info_list):
         expired_card=info_list[ids_detect["expired_card"] - 1],
         number=info_list[ids_detect["school"] - 2],
     )
+
+
+if __name__ == "__main__":
+    file_path = (
+        r"/media/hoangtc125/Windows/Users/ADMIN/Pictures/20194060-Trần Công Hoàng.jpg"
+    )
+    decode_data_list = detect_code_from_base64(file_to_base64(file_path))
+    print(decode_data_list)

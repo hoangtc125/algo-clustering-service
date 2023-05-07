@@ -24,6 +24,10 @@
             "code": 2003,
             "message": "Không nhận diện được"
         },
+        "detect_barcode_failure": {
+            "code": 2004,
+            "message": "Không nhận diện được barcode"
+        },
         "cam_timeout": {
             "code": 3000,
             "message": "Camera Timeout"
