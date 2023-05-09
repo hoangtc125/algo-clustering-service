@@ -9,7 +9,7 @@ from pyzbar.pyzbar import decode
 
 from app.core.config import project_config
 from app.core.exception import CustomHTTPException
-from app.model.card import CardHUCE, CardHUST, CardNEU
+from app.model.card import CardHUCE, CardHUST, CardHUST2, CardNEU
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = project_config.VISION_CONFIG_PATH
 
@@ -73,6 +73,18 @@ def make_card_hust(info_list):
         school=info_list[ids_detect["school"]],
         fullname=info_list[ids_detect["fullname"] + 1],
         major=info_list[ids_detect["birth"] + 2],
+        birth=info_list[ids_detect["birth"] + 1],
+        expired_card=info_list[ids_detect["expired_card"] + 1],
+        number=info_list[ids_detect["number"] + 1],
+    )
+
+
+def make_card_hust2(info_list):
+    ids_detect = detect_info(CardHUST2.get_detect_guide(), info_list)
+    return CardHUST2(
+        school=info_list[ids_detect["school"]],
+        fullname=info_list[ids_detect["fullname"] + 1],
+        major=info_list[ids_detect["expired_card"] - 1],
         birth=info_list[ids_detect["birth"] + 1],
         expired_card=info_list[ids_detect["expired_card"] + 1],
         number=info_list[ids_detect["number"] + 1],

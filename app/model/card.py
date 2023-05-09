@@ -70,6 +70,59 @@ class CardHUST(Card):
         }
 
 
+class CardHUST2(Card):
+    @root_validator
+    def make_card(cls, values):
+        print(values)
+        if values.get("school", "") != CardHUST.get_detect_guide()["school"]:
+            raise CustomHTTPException(error_type="detect_not_support")
+        try:
+            datetime.strptime(values.get("expired_card", ""), "%d/%m/%Y")
+        except ValueError:
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'expired_card:{values.get("expired_card", "")}',
+            )
+        try:
+            datetime.strptime(values.get("birth", ""), "%d/%m/%Y")
+        except ValueError:
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'birth:{values.get("birth", "")}',
+            )
+        if datetime.today() > datetime.strptime(
+            values.get("expired_card", "1/1/2000"), "%d/%m/%Y"
+        ):
+            raise CustomHTTPException(error_type="detect_out_of_date")
+        if not values.get("number", "").isdigit():
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'number:{values.get("number", "")}',
+            )
+        # Tạo email dựa trên thông tin trong values
+        fullname = values.get("fullname", "")
+        number = values.get("number", "")
+        name_parts = unidecode(fullname).lower().split()
+        email = (
+            name_parts[-1]
+            + "."
+            + "".join([item[0] for item in name_parts[:-1]])
+            + number[2:]
+            + "@sis.hust.edu.vn"
+        )
+        values["email"] = email
+        return values
+
+    @classmethod
+    def get_detect_guide(self):
+        return {
+            "school": "HANOI UNIVERSITY OF SCIENCE AND TECHNOLOGY",
+            "fullname": "Họ tên / Name",
+            "birth": "Ngày sinh / D.O.B",
+            "expired_card": "Giá trị đến / Valid Thru",
+            "number": "MSSV / ID No.",
+        }
+
 class CardHUCE(Card):
     email: str
     major_class: str

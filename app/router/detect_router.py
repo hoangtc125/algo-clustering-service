@@ -13,6 +13,7 @@ from app.service.text_detection import (
     byte_to_base64,
     make_card_huce,
     make_card_hust,
+    make_card_hust2,
     make_card_neu,
 )
 from app.service.mail import make_and_send_mail_card
@@ -20,6 +21,7 @@ from app.service.mail import make_and_send_mail_card
 
 class School(str, Enum):
     HUST = "HUST"
+    HUST2 = "HUST2"
     HUCE = "HUCE"
     NEU = "NEU"
 
@@ -35,9 +37,9 @@ async def test_file(
         file_path = r"/media/hoangtc125/Windows/Users/ADMIN/Pictures/20194060-Trần Công Hoàng.jpg"
         image_base64 = file_to_base64(file_path)
         info_list = detect_text_from_base64(image_base64)
-        barcode_list = detect_code_from_base64(image_base64)
+        code_list = detect_code_from_base64(image_base64)
         card = make_card_hust(info_list)
-        if card.number not in barcode_list:
+        if card.number not in code_list:
             raise CustomHTTPException(error_type="detect_barcode_failure")
     elif school == School.HUCE.value:
         file_path = r"/home/hoangtc125/Downloads/6447cd41859a5ac4038b.jpg"
@@ -65,9 +67,9 @@ async def test_file_future(
             future_text = executor.submit(detect_text_from_base64, image_base64)
             future_barcode = executor.submit(detect_code_from_base64, image_base64)
             info_list = future_text.result()
-            barcode_list = future_barcode.result()
+            code_list = future_barcode.result()
         card = make_card_hust(info_list)
-        if card.number not in barcode_list:
+        if card.number not in code_list:
             raise CustomHTTPException(error_type="detect_barcode_failure")
     elif school == School.HUCE.value:
         file_path = r"/home/hoangtc125/Downloads/6447cd41859a5ac4038b.jpg"
@@ -88,7 +90,7 @@ async def test_file_future(
 async def test_cam(
     background_tasks: BackgroundTasks, send_mail: bool, school: School = Query(...)
 ):
-    url = "http://192.168.1.13:8080/photo.jpg"
+    url = "http://192.168.1.118:8080/photo.jpg"
     try:
         response = requests.get(url, timeout=2)
     except:
@@ -98,6 +100,8 @@ async def test_cam(
     info_list = detect_text_from_base64(image_base64)
     if school == School.HUST.value:
         card = make_card_hust(info_list)
+    if school == School.HUST2.value:
+        card = make_card_hust2(info_list)
     elif school == School.HUCE.value:
         card = make_card_huce(info_list)
     elif school == School.NEU.value:
@@ -111,7 +115,7 @@ async def test_cam(
 async def test_cam_future(
     background_tasks: BackgroundTasks, send_mail: bool, school: School = Query(...)
 ):
-    url = "http://192.168.1.13:8080/photo.jpg"
+    url = "http://192.168.1.118:8080/photo.jpg"
     try:
         response = requests.get(url, timeout=2)
     except:
@@ -123,9 +127,9 @@ async def test_cam_future(
             future_text = executor.submit(detect_text_from_base64, image_base64)
             future_barcode = executor.submit(detect_code_from_base64, image_base64)
             info_list = future_text.result()
-            barcode_list = future_barcode.result()
+            code_list = future_barcode.result()
         card = make_card_hust(info_list)
-        if card.number not in barcode_list:
+        if card.number not in code_list:
             raise CustomHTTPException(error_type="detect_barcode_failure")
     elif school == School.HUCE.value:
         card = make_card_huce(info_list)
@@ -150,17 +154,20 @@ async def test_barcode(school: School = Query(...)):
 
 @router.get("/detect/test-future", response_model=HttpResponse)
 async def test_future(future: bool):
-    file_path = (
-        r"/media/hoangtc125/Windows/Users/ADMIN/Pictures/20194060-Trần Công Hoàng.jpg"
-    )
-    image_base64 = file_to_base64(file_path)
+    url = "http://192.168.1.118:8080/photo.jpg"
+    try:
+        response = requests.get(url, timeout=2)
+    except:
+        raise CustomHTTPException(error_type="cam_timeout")
+    img_data = response.content
+    image_base64 = byte_to_base64(img_data)
     if future:
         with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
             future_text = executor.submit(detect_text_from_base64, image_base64)
             future_barcode = executor.submit(detect_code_from_base64, image_base64)
             info_list = future_text.result()
-            barcode_list = future_barcode.result()
+            code_list = future_barcode.result()
     else:
         info_list = detect_text_from_base64(image_base64)
-        barcode_list = detect_code_from_base64(image_base64)
-    return success_response(data={"info_list": info_list, "barcode_list": barcode_list})
+        code_list = detect_code_from_base64(image_base64)
+    return success_response(data={"info_list": info_list, "code_list": code_list})
