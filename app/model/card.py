@@ -74,7 +74,7 @@ class CardHUST2(Card):
     @root_validator
     def make_card(cls, values):
         print(values)
-        if values.get("school", "") != CardHUST.get_detect_guide()["school"]:
+        if values.get("school", "") != CardHUST2.get_detect_guide()["school"]:
             raise CustomHTTPException(error_type="detect_not_support")
         try:
             datetime.strptime(values.get("expired_card", ""), "%d/%m/%Y")
@@ -219,6 +219,49 @@ class CardNEU(Card):
             "expired_card": "Hiệu lực từ : / 20",
         }
 
+
+class CardNEU2(Card):
+    @root_validator
+    def make_card(cls, values):
+        print(values)
+        try:
+            values["birth"] = values["birth"].split(":")[-1].strip()
+            values["expired_card"] = re.findall(r"\d+", values["expired_card"])[-1]
+            values["number"] = re.findall(r"\d+", values["number"])[-1]
+            values["email"] = values["number"] + "@st.neu.edu.vn"
+        except Exception as e:
+            raise CustomHTTPException(error_type="detect_invalid", message=str(e))
+        if values.get("school", "") != CardNEU2.get_detect_guide()["school"]:
+            raise CustomHTTPException(error_type="detect_not_support")
+        try:
+            datetime.strptime(values.get("birth", ""), "%d/%m/%Y")
+        except ValueError:
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'birth:{values.get("birth", "")}',
+            )
+        if not values.get("expired_card", "").isdigit():
+            raise CustomHTTPException(
+                error_type="detect_out_of_date",
+                message=f'expired_card:{values.get("expired_card", "")}',
+            )
+        if datetime.now().year > int(values.get("expired_card")):
+            raise CustomHTTPException(error_type="detect_out_of_date")
+        if not values.get("number", "").isdigit():
+            raise CustomHTTPException(
+                error_type="detect_info_failure",
+                message=f'number:{values.get("number", "")}',
+            )
+        return values
+
+    @classmethod
+    def get_detect_guide(self):
+        return {
+            "school": "TRƯỜNG ĐẠI HỌC KINH TẾ QUỐC DÂN",
+            "fullname": "THẺ SINH VIÊN",
+            "expired_card": " (20-20)",
+            "number": "MÃ SV: 11",
+        }
 
 if __name__ == "__main__":
     card = CardHUCE(

@@ -1,6 +1,7 @@
 import os
 import base64
 import difflib
+import re
 import cv2
 import numpy as np
 from google.cloud import vision
@@ -9,7 +10,7 @@ from pyzbar.pyzbar import decode
 
 from app.core.config import project_config
 from app.core.exception import CustomHTTPException
-from app.model.card import CardHUCE, CardHUST, CardHUST2, CardNEU
+from app.model.card import CardHUCE, CardHUST, CardHUST2, CardNEU, CardNEU2
 
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = project_config.VISION_CONFIG_PATH
 
@@ -114,6 +115,28 @@ def make_card_neu(info_list):
         birth=info_list[ids_detect["fullname"] + 2],
         expired_card=info_list[ids_detect["expired_card"] - 1],
         number=info_list[ids_detect["school"] - 2],
+    )
+
+
+def make_card_neu2(info_list):
+    ids_detect = detect_info(CardNEU2.get_detect_guide(), info_list)
+    id_birth, birth = None, None
+    for id_info, info in enumerate(info_list):
+        match = re.search(r'\d{1,2}/\d{1,2}/\d{4}', info)
+        if match:
+            id_birth, birth = id_info, match.group(0)
+    if birth is None:
+        raise CustomHTTPException(
+            error_type="detect_info_failure",
+            message=f'birth not found',
+        )
+    return CardNEU2(
+        school=info_list[ids_detect["school"]],
+        major=info_list[id_birth + 1],
+        fullname=info_list[ids_detect["fullname"] + 1],
+        birth=birth,
+        expired_card=info_list[ids_detect["expired_card"]],
+        number=info_list[ids_detect["number"]],
     )
 
 

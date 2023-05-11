@@ -15,6 +15,7 @@ from app.service.text_detection import (
     make_card_hust,
     make_card_hust2,
     make_card_neu,
+    make_card_neu2,
 )
 from app.service.mail import make_and_send_mail_card
 
@@ -24,6 +25,7 @@ class School(str, Enum):
     HUST2 = "HUST2"
     HUCE = "HUCE"
     NEU = "NEU"
+    NEU2 = "NEU2"
 
 
 router = APIRouter()
@@ -90,7 +92,7 @@ async def test_file_future(
 async def test_cam(
     background_tasks: BackgroundTasks, send_mail: bool, school: School = Query(...)
 ):
-    url = "http://192.168.1.118:8080/photo.jpg"
+    url = "http://192.168.1.222:8080/photo.jpg"
     try:
         response = requests.get(url, timeout=2)
     except:
@@ -106,6 +108,8 @@ async def test_cam(
         card = make_card_huce(info_list)
     elif school == School.NEU.value:
         card = make_card_neu(info_list)
+    elif school == School.NEU2.value:
+        card = make_card_neu2(info_list)
     if send_mail:
         background_tasks.add_task(make_and_send_mail_card, card.__dict__)
     return success_response(data=card)
@@ -115,7 +119,7 @@ async def test_cam(
 async def test_cam_future(
     background_tasks: BackgroundTasks, send_mail: bool, school: School = Query(...)
 ):
-    url = "http://192.168.1.118:8080/photo.jpg"
+    url = "http://192.168.1.222:8080/photo.jpg"
     try:
         response = requests.get(url, timeout=2)
     except:
@@ -154,7 +158,7 @@ async def test_barcode(school: School = Query(...)):
 
 @router.get("/detect/test-future", response_model=HttpResponse)
 async def test_future(future: bool):
-    url = "http://192.168.1.118:8080/photo.jpg"
+    url = "http://192.168.1.222:8080/photo.jpg"
     try:
         response = requests.get(url, timeout=2)
     except:
